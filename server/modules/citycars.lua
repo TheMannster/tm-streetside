@@ -56,8 +56,9 @@ local ABANDONED_NEARBY_DISTANCE = 150.0
 -- How often the abandoned-cleanup watchdog wakes up.
 local ABANDONED_CHECK_INTERVAL_MS = 60 * 1000
 
--- How often the break-in watchdog polls active cars for occupants.
-local BREAKIN_CHECK_INTERVAL_MS = 3 * 1000
+-- How often the break-in watchdog polls active cars for occupants. Kept as a
+-- fallback when `baseevents` is not running (instant enter events won't fire).
+local BREAKIN_CHECK_INTERVAL_MS = 1000
 
 local function locationKey(loc)
     return ('%.2f|%.2f|%.2f'):format(loc.x, loc.y, loc.z)
@@ -94,6 +95,50 @@ local function isTouched(entry)
     return false
 end
 
+-- Walks every player ped looking for one currently sitting in `veh`. Returns
+-- (playerSrcId, playerName) on a hit, nil otherwise.
+local function findOccupant(veh)
+    for _, playerId in ipairs(GetPlayers()) do
+        local pid = tonumber(playerId)
+        if pid then
+            local ped = GetPlayerPed(pid)
+            if ped and ped ~= 0 and GetVehiclePedIsIn(ped, false) == veh then
+                return pid, GetPlayerName(pid) or 'unknown'
+            end
+        end
+    end
+    return nil
+end
+
+local function logBreakIn(entry, srcId, name)
+    local pos = GetEntityCoords(entry.entity)
+    TM.Log.info('citycars',
+        ('^1break-in^7 - ^3%s^7 (id ^2%d^7) entered ^2%s^7 at ^2%.1f, %.1f, %.1f^7'):format(
+            name, srcId, entry.model or 'unknown', pos.x, pos.y, pos.z))
+end
+
+-- When a city car is stolen we log, optionally track it for abandoned cleanup,
+-- and remove it from activeVehicles (rotation must not delete it).
+local function releaseStolenCityCar(entry, srcId, name)
+    logBreakIn(entry, srcId, name)
+    if not Config.CityCars.Cleanup.PersistReleased then
+        releasedVehicles[#releasedVehicles + 1] = {
+            entity = entry.entity,
+            abandonedSince = nil,
+        }
+    end
+    local survivors = {}
+    for _, e in ipairs(activeVehicles) do
+        if e.entity ~= entry.entity then
+            survivors[#survivors + 1] = e
+        end
+    end
+    activeVehicles = survivors
+end
+
+-- Performance mods + tint are applied on clients (see client/modules/citycars.lua)
+-- — those natives are not available on the server.
+
 local function spawnCar(model, loc)
     local hash = (type(model) == 'string') and joaat(model) or model
     local veh = CreateVehicle(hash, loc.x, loc.y, loc.z, loc.w or 0.0, true, false)
@@ -110,6 +155,10 @@ local function spawnCar(model, loc)
     Wait(0)
     for _ = 1, 50 do
         if DoesEntityExist(veh) then
+            if Config.CityCars.Vehicle.VariedColours ~= false then
+                Entity(veh).state:set('tm_streetside_paint',
+                    tostring(math.random(0, 159)), true)
+            end
             Entity(veh).state:set('tm_streetside', true, true)
             return veh
         end
@@ -128,6 +177,12 @@ local function despawnUntouched()
             gone = gone + 1
         elseif isTouched(entry) then
             released = released + 1
+            -- Rotation used to "release" occupied cars with no log if the
+            -- break-in poll hadn't run yet — same message as live detection.
+            local srcId, name = findOccupant(entry.entity)
+            if srcId then
+                logBreakIn(entry, srcId, name)
+            end
             if watchReleased then
                 releasedVehicles[#releasedVehicles + 1] = {
                     entity = entry.entity,
@@ -299,28 +354,13 @@ CreateThread(function()
     end
 end)
 
--- Walks every player ped looking for one currently sitting in `veh`. Returns
--- (playerSrcId, playerName) on a hit, nil otherwise.
-local function findOccupant(veh)
-    for _, playerId in ipairs(GetPlayers()) do
-        local ped = GetPlayerPed(playerId)
-        if ped and ped ~= 0 and GetVehiclePedIsIn(ped, false) == veh then
-            return tonumber(playerId), GetPlayerName(playerId) or 'unknown'
-        end
-    end
-    return nil
-end
-
--- Break-in watchdog. Polls the active set looking for someone climbing into
--- one of our city cars in real time. When detected we log it to console and
--- promote the car straight to "released" so the rotation tick won't yank it
--- out from under the player.
+-- Break-in watchdog. Polls the active set as a fallback (see
+-- baseevents:enteredVehicle below).
 CreateThread(function()
     Wait(4000)
     while true do
         Wait(BREAKIN_CHECK_INTERVAL_MS)
 
-        local watchReleased = not Config.CityCars.Cleanup.PersistReleased
         local survivors = {}
 
         for _, entry in ipairs(activeVehicles) do
@@ -329,17 +369,7 @@ CreateThread(function()
             else
                 local srcId, name = findOccupant(entry.entity)
                 if srcId then
-                    local pos = GetEntityCoords(entry.entity)
-                    TM.Log.info('citycars',
-                        ('^1break-in^7 - ^3%s^7 (id ^2%d^7) entered ^2%s^7 at ^2%.1f, %.1f, %.1f^7'):format(
-                            name, srcId, entry.model or 'unknown', pos.x, pos.y, pos.z))
-
-                    if watchReleased then
-                        releasedVehicles[#releasedVehicles + 1] = {
-                            entity = entry.entity,
-                            abandonedSince = nil,
-                        }
-                    end
+                    releaseStolenCityCar(entry, srcId, name)
                 else
                     survivors[#survivors + 1] = entry
                 end
@@ -347,6 +377,31 @@ CreateThread(function()
         end
 
         activeVehicles = survivors
+    end
+end)
+
+-- Instant enter detection when the `baseevents` resource is running (default on
+-- most Cfx server templates). Client sends netId; resolves to server entity.
+-- RegisterNetEvent marks this as an allowed client→server event so the runtime
+-- does not log "was not safe for net" when we handle it here.
+RegisterNetEvent('baseevents:enteredVehicle')
+AddEventHandler('baseevents:enteredVehicle', function(vehicle, _seat, _displayName, netId)
+    local src = source
+    local veh = 0
+    if netId and netId ~= 0 then
+        veh = NetworkGetEntityFromNetworkId(netId)
+    end
+    if veh == 0 or not DoesEntityExist(veh) then
+        veh = vehicle
+    end
+    if veh == 0 or not DoesEntityExist(veh) then return end
+    if Entity(veh).state.tm_streetside ~= true then return end
+
+    for _, entry in ipairs(activeVehicles) do
+        if entry.entity == veh then
+            releaseStolenCityCar(entry, src, GetPlayerName(src) or 'unknown')
+            return
+        end
     end
 end)
 

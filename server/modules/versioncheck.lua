@@ -76,9 +76,17 @@ CreateThread(function()
             return
         end
 
-        if compareVersions(LOCAL, remote) >= 0 then
+        local cmp = compareVersions(LOCAL, remote)
+        if cmp == 0 then
             TM.Log.info('version',
-                ('up to date (^2v%s^7, latest ^2v%s^7)'):format(LOCAL, remote))
+                ('Up to date (^2v%s^7, matches GitHub ^2v%s^7)'):format(LOCAL, remote))
+            return
+        end
+
+        if cmp > 0 then
+            TM.Log.info('version',
+                ('Pre-release build (^2v%s^7) — ahead of the published GitHub release (^2v%s^7)'):format(
+                    LOCAL, remote))
             return
         end
 

@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.3.7]
+- Varied city car paint: one random palette colour with secondary matched to primary; pearlescent and wheel colour no longer overridden (fixes harsh random combos)
+
+## [1.3.6]
+- Register `baseevents:enteredVehicle` as a net event in this resource so FiveM does not warn "was not safe for net" when handling break-ins
+
+## [1.3.5]
+- City cars get random primary, secondary, pearlescent, and wheel colours each spawn (`Config.CityCars.Vehicle.VariedColours`, default `true`)
+
+## [1.3.4]
+- Version check: when your resource version is newer than GitHub, the console now reports a pre-release build instead of implying you are merely “up to date”
+
+## [1.3.3]
+- Fixed startup error: `GetNumVehicleMods` / `SetVehicleMod` / `SetVehicleWindowTint` are client-only — city car performance + tint now apply on clients via `tm_streetside` state bag
+
+## [1.3.2]
+- Break-in console log is reliable: listens for `baseevents:enteredVehicle` when that resource runs, logs occupied cars during rotation (previously silent if the poll had not run yet), and polls every 1s as a fallback
+
+## [1.3.1]
+- City cars spawn with max engine, brakes, transmission, and suspension (per model) and pure black window tint
+
 ## [1.3.0]
 - Added `Config.CityCars.Rotation.LogSkippedSpots` toggle (default `false`) to silence the per-spot `skipping ... vehicle already there` log on each rotation
 - **Breaking:** reorganised `Config.CityCars` into logical sub-tables. Renames:

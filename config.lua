@@ -68,6 +68,11 @@ Config.CityCars = {
         -- Overwrite the plate with blank spaces so cars look unregistered.
         BlankPlates = true,
 
+        -- Random GTA palette index (0–159) for body colour; secondary matches
+        -- primary. Pearlescent and wheel colour are left at the model default.
+        -- Set false to keep each model's default paint.
+        VariedColours = true,
+
         -- A car is "released" (we stop tracking it) once a player sits in it
         -- OR it moves this many meters from its spawn point. Released cars
         -- are left in the world - the freed slot is refilled on the NEXT
@@ -124,6 +129,9 @@ Config.CityCars = {
         { model = 'dominator3',           maxActive = 1 },
         { model = 'dominator9',           maxActive = 1 },
         { model = 'gauntlet4',            maxActive = 1 },
+        { model = 'vstr',                 maxActive = 1 },
+        { model = 'ct5vbw22',             maxActive = 1 },
+        { model = 'gstgauntc2',           maxActive = 1 },
     },
 
     ---------------------------------------------------------------------------

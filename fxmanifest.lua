@@ -4,7 +4,7 @@ game 'gta5'
 name 'tm-streetside'
 description 'Modular display + ambient city vehicles'
 author 'themannster'
-version '1.3.0'
+version '1.3.7'
 
 dependencies {
     'ox_lib',
@@ -20,6 +20,7 @@ shared_scripts {
 
 client_scripts {
     'client/modules/display.lua',
+    'client/modules/citycars.lua',
     'client/modules/policegate.lua',
 }
 
