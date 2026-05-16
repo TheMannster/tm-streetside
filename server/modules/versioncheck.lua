@@ -42,14 +42,79 @@ local function topChangelogSection(md)
     return rest
 end
 
-local function printChangelog(text)
-    if not text or text == '' then return end
-    TM.Log.info('version', 'changelog:')
-    for line in (text .. '\n'):gmatch('([^\n]*)\n') do
-        if line ~= '' then
-            print(('  ^7%s'):format(line))
+-- Plaintext for FiveM console (no Markdown noise).
+local function changelogLineToPlain(line)
+    local l = line
+    l = l:gsub('^%s*#+%s+', '')
+    l = l:gsub('`([^`]*)`', "'%1'")
+    l = l:gsub('`', '')
+    l = l:gsub('%*%*', '')
+    l = l:gsub('^%s*%-%s+', '• ')
+    l = l:gsub('—', ' - ')
+    return (l:match('^%s*(.-)%s*$') or l)
+end
+
+local function wordwrap(str, maxLen, indent)
+    local res = {}
+    local line = ''
+    for word in str:gmatch('%S+') do
+        local test = (line == '' and (indent .. word) or (line .. ' ' .. word))
+        if #test > maxLen and line ~= '' then
+            res[#res + 1] = line
+            line = indent .. word
+        elseif line == '' then
+            line = indent .. word
+        else
+            line = line .. ' ' .. word
         end
     end
+    if line ~= '' then res[#res + 1] = line end
+    return res
+end
+
+local function printOutdatedNotice(localVer, remoteVer, changelogRaw)
+    local function pl(s)
+        print(s .. '^7')
+    end
+
+    pl('')
+    pl('^5----------------------------------------------------')
+    pl(('^3[TM:version WARN]^7  Update available  ^3v%s^7 → ^2v%s^7'):format(localVer, remoteVer))
+    pl('^5----------------------------------------------------')
+    pl(('^7  Download: ^4https://github.com/%s^7'):format(REPO))
+    pl('^5----------------------------------------------------')
+
+    local section = topChangelogSection(changelogRaw)
+    if section and section:match('%S') then
+        pl('^7  ^5Latest release notes:^7')
+        local lines = {}
+        for line in (section .. '\n'):gmatch('([^\n]*)\n') do
+            if line:match('%S') then lines[#lines + 1] = line end
+        end
+
+        if #lines > 0 then
+            local firstPlain = changelogLineToPlain(lines[1])
+            local onlyVersion = firstPlain:match('^%[([%d%.]+)%]$')
+            if onlyVersion then
+                pl(('^7    ^2v%s^7'):format(onlyVersion))
+                table.remove(lines, 1)
+            end
+        end
+
+        for _, raw in ipairs(lines) do
+            local plain = changelogLineToPlain(raw)
+            if plain ~= '' then
+                for _, w in ipairs(wordwrap(plain, 72, '  ')) do
+                    pl('^7' .. w)
+                end
+            end
+        end
+    else
+        pl('^9  (Changelog not available; check the repo on GitHub.)^7')
+    end
+
+    pl('^5----------------------------------------------------')
+    pl('')
 end
 
 local function fetch(url, cb)
@@ -90,13 +155,8 @@ CreateThread(function()
             return
         end
 
-        TM.Log.warn('version',
-            ('^1OUTDATED^7 - running ^3v%s^7, latest is ^2v%s^7'):format(LOCAL, remote))
-        TM.Log.info('version',
-            ('download: ^4https://github.com/%s^7'):format(REPO))
-
         fetch(RAW .. '/CHANGELOG.md', function(changelog)
-            printChangelog(topChangelogSection(changelog))
+            printOutdatedNotice(LOCAL, remote, changelog)
         end)
     end)
 end)

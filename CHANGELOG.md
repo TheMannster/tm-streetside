@@ -2,6 +2,7 @@
 
 ## [1.3.9]
 - **Licensing:** resource is **proprietary** (FiveM)—full terms in `LICENSE`; `README` **License** section matches (server use, no redistribution or commercial use without written agreement, downstream work must not ship these sources). No code or behavior changes.
+- Version check: outdated notices use a bordered block, strip Markdown for the console, and wrap long lines so release notes stay readable.
 
 ## [1.3.8]
 - City cars: no `failed to spawn` console warnings when the server has no players connected (OneSync cannot create vehicles; rotation summary still logs as before)
