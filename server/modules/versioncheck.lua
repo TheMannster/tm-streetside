@@ -101,9 +101,14 @@ local function printOutdatedNotice(localVer, remoteVer, changelogRaw)
             end
         end
 
+        local firstBullet = true
         for _, raw in ipairs(lines) do
             local plain = changelogLineToPlain(raw)
             if plain ~= '' then
+                if not firstBullet then
+                    pl('')
+                end
+                firstBullet = false
                 for _, w in ipairs(wordwrap(plain, 72, '  ')) do
                     pl('^7' .. w)
                 end
