@@ -55,3 +55,9 @@ If you have any `CreateUseableItem('lockpick', ...)` block elsewhere that fires 
 | `tm-streetside.useaccesstool` | server | - | Wraps `r14-evidence.accesstool` - blocks it on city cars when no cops are on, otherwise forwards normally. |
 | `tm-streetside.CanSteal` | server | `boolean` | True if enough cops are online to allow theft. |
 | `tm-streetside.GetOnlineCops` | server | `number` | Count of police that satisfy `Police.Jobs` + `Police.RequireOnDuty`. |
+
+## License
+
+Proprietary (FiveM). Copyright © 2026 TheMannster. All rights reserved.
+
+See [`LICENSE`](./LICENSE) for the full terms: you may run and adapt this resource on your own server; redistribution, substitute forks or mirrors, and commercial use unless the copyright holder has **explicitly agreed in writing** are not allowed. Other resources or packages must not ship copies of these source files—direct end users to **your** official download or channel instead.
