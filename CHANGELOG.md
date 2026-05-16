@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.3.8]
+- City cars: no `failed to spawn` console warnings when the server has no players connected (OneSync cannot create vehicles; rotation summary still logs as before)
+
 ## [1.3.7]
 - Varied city car paint: one random palette colour with secondary matched to primary; pearlescent and wheel colour no longer overridden (fixes harsh random combos)
 

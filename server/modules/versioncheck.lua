@@ -79,7 +79,7 @@ CreateThread(function()
         local cmp = compareVersions(LOCAL, remote)
         if cmp == 0 then
             TM.Log.info('version',
-                ('Up to date (^2v%s^7, matches GitHub ^2v%s^7)'):format(LOCAL, remote))
+                ('Up to date (^2v%s^7, GitHub ^2v%s^7)'):format(LOCAL, remote))
             return
         end
 

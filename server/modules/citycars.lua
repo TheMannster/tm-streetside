@@ -143,7 +143,10 @@ local function spawnCar(model, loc)
     local hash = (type(model) == 'string') and joaat(model) or model
     local veh = CreateVehicle(hash, loc.x, loc.y, loc.z, loc.w or 0.0, true, false)
     if not veh or veh == 0 then
-        TM.Log.warn('citycars', ('failed to spawn %s at %s'):format(tostring(model), locationKey(loc)))
+        -- OneSync commonly cannot create vehicles with nobody connected; avoid noisy WARN spam.
+        if #GetPlayers() > 0 then
+            TM.Log.warn('citycars', ('failed to spawn %s at %s'):format(tostring(model), locationKey(loc)))
+        end
         return nil
     end
 
